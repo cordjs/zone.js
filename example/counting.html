@@ -35,7 +35,7 @@
         this.print();
       },
       '+reset': function (delegate) {
-        this.data.start = 0;
+        this.data.start = Date.now();
       },
       print: function () {
         counter = this.counter();
@@ -84,7 +84,7 @@
      * Nice.
      */
     function noop () {
-      setTimeout(noop, 10*Math.random());
+      setTimeout(noop, 1000*Math.random());
     }
     noop();
   </script>

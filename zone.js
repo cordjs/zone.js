@@ -1,5 +1,21 @@
 'use strict';
 
+(function (factory) {
+  var isBrowser =  typeof window !== "undefined" && window.document;
+  var rootCtx = isBrowser ? window : global;
+  if (typeof module === "object" && typeof module.exports === "object") {
+    // CommonJS
+    module.exports = factory(rootCtx, isBrowser)
+  } else if (typeof define === "function" && define.amd) {
+		// AMD. Register as an anonymous module.
+		define(function () {
+			return factory(rootCtx, true);
+		});
+	} else {
+		// Browser globals
+		factory(rootCtx, isBrowser);
+	}
+}(function (global, isBrowser) {
 
 function Zone(parentZone, data) {
   var zone = (arguments.length) ? Object.create(parentZone) : this;
@@ -77,23 +93,23 @@ Zone.prototype = {
   run: function run (fn, applyTo, applyWith) {
     applyWith = applyWith || [];
 
-    var oldZone = window.zone,
+    var oldZone = global.zone,
         result;
 
-    window.zone = this;
+    global.zone = this;
 
     try {
       this.beforeTask();
       result = fn.apply(applyTo, applyWith);
     } catch (e) {
-      if (zone.onError) {
-        zone.onError(e);
+      if (this.onError) {
+        this.onError(e);
       } else {
         throw e;
       }
     } finally {
       this.afterTask();
-      window.zone = oldZone;
+      global.zone = oldZone;
     }
     return result;
   },
@@ -117,6 +133,7 @@ Zone.patchSetClearFn = function (obj, fnNames) {
 
     if (delegate) {
       var ids = {};
+      var timeoutIntIdCounter = 0;
 
       if (setName === 'setInterval') {
         zone[setName] = function (fn) {
@@ -132,14 +149,18 @@ Zone.patchSetClearFn = function (obj, fnNames) {
         };
       } else {
         zone[setName] = function (fn) {
-          var id;
+          var id, intId;
           arguments[0] = function () {
-            delete ids[id];
+            delete ids[intId];
             return fn.apply(this, arguments);
           };
           var args = Zone.bindArgumentsOnce(arguments);
           id = delegate.apply(obj, args);
-          ids[id] = true;
+          intId = typeof id == 'number' ? id : timeoutIntIdCounter++;
+          if (intId != id) {
+            id.intId = intId;
+          }
+          ids[intId] = zone; // save current zone for dequeue in clearTimeout
           return id;
         };
       }
@@ -152,9 +173,13 @@ Zone.patchSetClearFn = function (obj, fnNames) {
       var clearDelegate = obj[clearName];
 
       zone[clearName] = function (id) {
-        if (ids[id]) {
-          delete ids[id];
-          zone.dequeueTask();
+        var intId = typeof id == 'number' ? id : id.intId;
+        if (ids[intId]) {
+          var boundZone = ids[intId];
+          delete ids[intId];
+          boundZone.beforeTask();
+          boundZone.dequeueTask();
+          boundZone.afterTask();
         }
         return clearDelegate.apply(this, arguments);
       };
@@ -197,6 +222,19 @@ Zone.patchPrototype = function (obj, fnNames) {
     }
   });
 };
+
+
+Zone.patchFnWithCallbacks = function (obj, fnNames) {
+  fnNames.forEach(function (name) {
+    var delegate = obj[name];
+    if (delegate) {
+      obj[name] = function () {
+        return delegate.apply(this, Zone.bindArgumentsOnce(arguments));
+      };
+    }
+  });
+};
+
 
 Zone.bindArguments = function (args) {
   for (var i = args.length - 1; i >= 0; i--) {
@@ -302,6 +340,14 @@ Zone.patchEventTargetMethods = function (obj) {
 };
 
 Zone.patch = function patch () {
+  if (isBrowser) {
+    Zone.patchBrowser();
+  } else {
+    Zone.patchNode();
+  }
+};
+
+Zone.patchBrowser = function patchBrowser () {
   Zone.patchSetClearFn(window, [
     'timeout',
     'interval',
@@ -370,6 +416,48 @@ Zone.patch = function patch () {
   Zone.patchMutationObserverClass('WebKitMutationObserver');
   Zone.patchDefineProperty();
   Zone.patchRegisterElement();
+};
+
+Zone.patchNode = function patchNode () {
+  // patch promises
+  if (global.Promise) {
+    Zone.patchPrototype(Promise.prototype, [
+      'then',
+      'catch'
+    ]);
+  }
+  Zone.patchSetClearFn(global, [
+    'timeout',
+    'interval',
+    'immediate'
+  ]);
+  var origNextTick = process.nextTick;
+  Zone.patchFnWithCallbacks(process, [
+    'nextTick'
+  ]);
+
+  // console.log seems to fall into infinite recursion when process.nextTick is patched
+  var origConsoleLog = console.log;
+  console.log = function() {
+    var patchedNextTick = process.nextTick;
+    process.nextTick = origNextTick;
+    origConsoleLog.apply(console, arguments);
+    process.nextTick = patchedNextTick;
+  };
+
+  var origConsoleTrace = console.trace;
+  console.trace = function() {
+    var patchedNextTick = process.nextTick;
+    process.nextTick = origNextTick;
+    origConsoleTrace.apply(console, arguments);
+    process.nextTick = patchedNextTick;
+  };
+
+  Zone.patchFnWithCallbacks(require('fs'), [
+    'exists'
+  ]);
+
+  Zone.patchDefineProperty();
 };
 
 //
@@ -605,14 +693,10 @@ Zone.onEventNames = Zone.eventNames.map(function (property) {
   return 'on' + property;
 });
 
-Zone.init = function init () {
-  if (typeof module !== 'undefined' && module && module.exports) {
-    module.exports = new Zone();
-  } else {
-    window.zone = new Zone();
-  }
-  Zone.patch();
-};
+global.zone = new Zone();
+Zone.patch();
+global.Zone = {};
 
+return global.zone;
 
-Zone.init();
+}));
