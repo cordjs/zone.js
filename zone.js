@@ -173,13 +173,15 @@ Zone.patchSetClearFn = function (obj, fnNames) {
       var clearDelegate = obj[clearName];
 
       zone[clearName] = function (id) {
-        var intId = typeof id == 'number' ? id : id.intId;
-        if (ids[intId]) {
-          var boundZone = ids[intId];
-          delete ids[intId];
-          boundZone.beforeTask();
-          boundZone.dequeueTask();
-          boundZone.afterTask();
+        if (id != null) {
+          var intId = typeof id == 'number' ? id : id.intId;
+          if (ids[intId]) {
+            var boundZone = ids[intId];
+            delete ids[intId];
+            boundZone.beforeTask();
+            boundZone.dequeueTask();
+            boundZone.afterTask();
+          }
         }
         return clearDelegate.apply(this, arguments);
       };
