@@ -7,14 +7,14 @@
     // CommonJS
     module.exports = factory(rootCtx, isBrowser)
   } else if (typeof define === "function" && define.amd) {
-		// AMD. Register as an anonymous module.
-		define(function () {
-			return factory(rootCtx, true);
-		});
-	} else {
-		// Browser globals
-		factory(rootCtx, isBrowser);
-	}
+    // AMD. Register as an anonymous module.
+    define(function () {
+      return factory(rootCtx, true);
+    });
+  } else {
+    // Browser globals
+    factory(rootCtx, isBrowser);
+  }
 }(function (global, isBrowser) {
 
 function Zone(parentZone, data) {
