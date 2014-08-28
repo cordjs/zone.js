@@ -99,7 +99,7 @@ Zone.prototype = {
     global.zone = this;
 
     try {
-      this.beforeTask();
+      this.beforeTask(false);
       result = fn.apply(applyTo, applyWith);
     } catch (e) {
       if (this.onError) {
@@ -108,7 +108,7 @@ Zone.prototype = {
         throw e;
       }
     } finally {
-      this.afterTask();
+      this.afterTask(false);
       global.zone = oldZone;
     }
     return result;
@@ -178,9 +178,9 @@ Zone.patchSetClearFn = function (obj, fnNames) {
           if (ids[intId]) {
             var boundZone = ids[intId];
             delete ids[intId];
-            boundZone.beforeTask();
+            boundZone.beforeTask(true);
             boundZone.dequeueTask();
-            boundZone.afterTask();
+            boundZone.afterTask(true);
           }
         }
         return clearDelegate.apply(this, arguments);
