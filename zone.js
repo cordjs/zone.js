@@ -183,7 +183,7 @@ Zone.patchSetClearFn = function (obj, fnNames) {
             boundZone.afterTask(true);
           }
         }
-        return clearDelegate.apply(this, arguments);
+        return clearDelegate.apply(null, arguments);
       };
 
       obj[clearName] = function () {
