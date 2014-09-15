@@ -352,7 +352,7 @@ Zone.patch = function patch () {
 Zone.patchBrowser = function patchBrowser () {
   Zone.patchSetClearFn(window, [
     'timeout',
-    'interval',
+//    'interval',
     'immediate'
   ]);
 
@@ -366,7 +366,8 @@ Zone.patchBrowser = function patchBrowser () {
 
   // patched properties depend on addEventListener, so this needs to come first
   if (window.EventTarget) {
-    Zone.patchEventTargetMethods(window.EventTarget.prototype);
+//    Zone.patchEventTargetMethods(window.EventTarget.prototype);
+    Zone.patchEventTargetMethods(window.document)
 
   // Note: EventTarget is not available in all browsers,
   // if it's not available, we instead patch the APIs in the IDL that inherit from EventTarget
@@ -404,16 +405,16 @@ Zone.patchBrowser = function patchBrowser () {
     Zone.patchViaPropertyDescriptor();
   } else {
     Zone.patchViaCapturingAllTheEvents();
-    Zone.patchClass('XMLHttpRequest');
+//    Zone.patchClass('XMLHttpRequest');
   }
 
   // patch promises
-  if (window.Promise) {
-    Zone.patchPrototype(Promise.prototype, [
-      'then',
-      'catch'
-    ]);
-  }
+//  if (window.Promise) {
+//    Zone.patchPrototype(Promise.prototype, [
+//      'then',
+//      'catch'
+//    ]);
+//  }
   Zone.patchMutationObserverClass('MutationObserver');
   Zone.patchMutationObserverClass('WebKitMutationObserver');
   Zone.patchDefineProperty();
@@ -480,7 +481,7 @@ Zone.canPatchViaPropertyDescriptor = function () {
 // - Firefox
 Zone.patchViaPropertyDescriptor = function () {
   Zone.patchProperties(HTMLElement.prototype, Zone.onEventNames);
-  Zone.patchProperties(XMLHttpRequest.prototype);
+//  Zone.patchProperties(XMLHttpRequest.prototype);
 };
 
 // Whenever any event fires, we check the event target and all parents
@@ -695,7 +696,9 @@ Zone.onEventNames = Zone.eventNames.map(function (property) {
   return 'on' + property;
 });
 
-global.zone = new Zone();
+var rootZone = new Zone();
+Zone.rootZone = rootZone;
+global.zone = rootZone;
 Zone.patch();
 global.Zone = {};
 
