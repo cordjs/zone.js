@@ -1,6 +1,6 @@
 {
-  "name": "zone.js",
-  "version": "0.3.0",
+  "name": "cordjs-zone",
+  "version": "0.3.1",
   "description": "Zones for JavaScript",
   "main": "zone.js",
   "directories": {
@@ -12,13 +12,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/angular/zone.js.git"
+    "url": "git://github.com/cordjs/zone.js.git"
   },
   "author": "Brian Ford",
   "license": "Apache 2.0",
-  "bugs": {
-    "url": "https://github.com/angular/zone.js/issues"
-  },
   "devDependencies": {
     "karma": "~0.10.2",
     "karma-jasmine": "~0.1.3",

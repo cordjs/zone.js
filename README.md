@@ -1,6 +1,20 @@
-# Zone.js
+# Fork of the Zone.js Library by Angular with Bug Fixes, Basic NodeJS Support and Profiling Support Orientation
+ 
+WARNING: In this fork patching of never-lasting async functions (like setInterval, DOM event handlers etc.) is commented
+in favor of profiling functionality support (to know when things are actually completed).
 
-[![Build Status](https://travis-ci.org/angular/zone.js.png)](https://travis-ci.org/angular/zone.js)
+Quality improvements over original library:
+* Correct handling of clearTimeout-calls.
+* Support of both AMD and CommonJS (for NodeJS) in addition to traditional global-defining used in original library.
+
+This fork has a separate npm package:
+```bash
+npm install cordjs-zone
+```
+
+----
+
+# Zone.js
 
 Implements _Zones_ for JavaScript, inspired by [Dart](https://www.dartlang.org/articles/zones/).
 
