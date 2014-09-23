@@ -225,7 +225,12 @@ Zone.patchPrototype = function (obj, fnNames) {
   });
 };
 
-
+/**
+ * Like `Zone.patchPrototype` converts function arguments of the given methods to be run under the callings zone
+ *  but unlike `Zone.patchPrototype` treats that functions as one-time and therefore uses `Zone.bindArgumentsOnce`.
+ * @param {Object} obj Object whose functions are need to be patched
+ * @param {Array<String>} fnNames List of member functions of the `obj` to be patched
+ */
 Zone.patchFnWithCallbacks = function (obj, fnNames) {
   fnNames.forEach(function (name) {
     var delegate = obj[name];
@@ -237,6 +242,54 @@ Zone.patchFnWithCallbacks = function (obj, fnNames) {
   });
 };
 
+/**
+ * Like `Zone.patchFnWithCallbacks` but binds callbacks to the parent zone
+ *  and uses `Zone.bindArgumentsOnceWithParentZone` to add trick supporting profiling timers.
+ * @param {Object} obj Object whose functions are need to be patched
+ * @param {Array<String>} fnNames List of member functions of the `obj` to be patched
+ */
+Zone.patchFnWithParentZoneCallbacks = function (obj, fnNames) {
+  fnNames.forEach(function (name) {
+    var delegate = obj[name];
+    if (delegate) {
+      obj[name] = function () {
+        var boundZone = zone.parent ? zone.parent : zone;
+        return delegate.apply(this, Zone.bindArgumentsOnceWithParentZone(arguments, boundZone));
+      };
+    }
+  });
+};
+
+/**
+ * Binds function-arguments in the given list to be bound to the given zone.
+ * Unlike `Zone.bindArgumentsOnce` additionally emulates fake async task for the original (current) zone. This is
+ *  necessary to correctly track and profile completing of some async functions and at the same time bind their
+ *  callbacks to another zone.
+ * @param {Array} args List of arguments
+ * @param {Zone} boundZone Zone to which the callbacks in the given list of arguments should be bound
+ * @returns {Array} Original list of arguments with mutated function-type arguments
+ */
+Zone.bindArgumentsOnceWithParentZone = function (args, boundZone) {
+  var origZone = zone;
+  for (var i = args.length - 1; i >= 0; i--) {
+    if (typeof args[i] === 'function') {
+      (function(fn) {
+        // fake task
+        origZone.enqueueTask();
+        args[i] = boundZone.bind(function () {
+          // completing fake task
+          origZone.beforeTask(true);
+          origZone.dequeueTask();
+          origZone.afterTask(true);
+          var result = fn.apply(this, arguments);
+          boundZone.dequeueTask(fn);
+          return result;
+        });
+      })(args[i]);
+    }
+  }
+  return args;
+}
 
 Zone.bindArguments = function (args) {
   for (var i = args.length - 1; i >= 0; i--) {
